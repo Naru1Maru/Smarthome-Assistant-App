@@ -1,0 +1,44 @@
+﻿# Android
+*.iml
+.gradle/
+/local.properties
+/.idea/
+*/build/
+app/build/
+*.apk
+.cxx/
+/.settings/
+*.keystore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.env
+.venv
+.envrc
+
+# Logs & data
+*.log
+*.jsonl
+*.tmp
+.idea/
+*.db
+.swp
+.DS_Store
+Thumbs.db
+
+# Models & checkpoints
+Models/
+**/models/
+**/ggml-model*
+Qwen*
+*.gguf
+
+# Home Assistant runtime files
+homeassistant_backup/
+*.db-wal
+*.db-shm
+
