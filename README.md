@@ -89,3 +89,13 @@ smarthome_core/
     smarthome_gateway_addon/             ← структура add-on для Home Assistant
     llama_openai_bridge.py               ← мост OpenAI ↔ llama.cpp
 ```
+
+## Скриншоты
+
+| Главный экран | Уточнение комнаты | Настройки |
+| --- | --- | --- |
+| ![Главный экран](screenshots/Screenshot_20260226_153041.png) | ![Нужно уточнение](screenshots/Screenshot_20260226_153035.png) | ![Настройки](screenshots/Screenshot_20260226_153004.png) |
+
+| Журнал действий | Диагностика | Недавние команды |
+| --- | --- | --- |
+| ![Журнал действий](screenshots/Screenshot_20260226_152947.png) | ![Диагностика](screenshots/Screenshot_20260226_153056.png) | ![Недавние команды](screenshots/Screenshot_20260226_152826.png) |
