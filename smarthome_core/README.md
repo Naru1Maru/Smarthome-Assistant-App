@@ -1,133 +1,68 @@
-# smarthome-core (core engine module v1)
+# Ядро SmartHome Assistant
 
-This repo contains an **application-agnostic** core for your diploma project:
-- `ParsedCommand` / `ValidatedCommand` JSON Schemas
-- deterministic validator (minimal clarifications policy)
-- Home Assistant execution plan builder (dry-run)
+Каталог `smarthome_core/` содержит независимый от приложения движок: правила, схемы JSON, валидатор и инструменты для интеграции с Home Assistant. Его можно использовать отдельно от мобильного клиента.
 
-## Quick start
+## Что внутри
+- `smarthome_core/` — Python‑пакет с правилами, валидатором и LLM-парсером.
+- `lexicon/` — словари комнат, цветов, модификаторов.
+- `registry/` — пример реестра устройств/зон Home Assistant.
+- `schemas/` — схемы `ParsedCommand` и `ValidatedCommand` для валидации JSON.
+- `data/` — gold-датаcет фраз и ожидаемых команд.
+- `tests/` — набор pytest для регрессии.
+- `smarthome_gateway/` — FastAPI-приложение (add-on) поверх ядра.
+- `llama_openai_bridge.py` — мост OpenAI API ↔ llama.cpp для локальной LLM.
 
-From this directory:
-
-```bash
-python -m smarthome_core.cli validate-gold
-python -m smarthome_core.cli smoke
+## Быстрый старт
+```powershell
+cd smarthome_core
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements_gateway.txt  # включает зависимости ядра и шлюза
 ```
 
-## Layout
+### Проверка правил и валидатора
+```powershell
+python -m smarthome_core.cli eval-nlu        # только парсер
+python -m smarthome_core.cli eval-val        # только валидатор
+python -m smarthome_core.cli eval            # полный прогон на gold-наборе
+```
+Отчёты складываются в `reports/`.
 
-- `smarthome_core/` — Python package (core engine)
-- `schemas/` — JSON schemas
-- `lexicon/` — modifiers, area synonyms, colors
-- `registry/` — device registry
-- `data/` — gold dataset (dual)
-- `tests/` — pytest tests
+### Запуск пайплайна по одной команде
+```powershell
+python -m smarthome_core.cli run-light --text "включи свет в спальне"
+```
+Ответ содержит `stage` (parse/validate/execute), промежуточные JSONы и тайминги.
 
-## Notes
+## Режимы парсера
+- `rules` — детерминированные правила (минимальные уточнения).
+- `llm` — только LLM (Qwen2.5 или другая OpenAI-совместимая модель).
+- `llm_safe` — сначала правила, если не справились — LLM. Это режим по умолчанию для продакшена.
 
-- `ADJUST_COLOR_TEMP` leaves `color_temp_kelvin=None` in `execution_plan` and emits
-  `PARAM_DROPPED` warning. The runtime executor should resolve it via current state from HA.
-
-
-## High-level API
-
-- `parse_light_command_v1(text, context=...)` -> ParsedCommand v1
-- `validate_parsed_command(parsed, ...)` -> ValidatedCommand v1 (+ execution_plan)
-- `run_light_pipeline_v1(text, context=...)` -> PipelineResult(stage, parsed, validated)
-
-
-## LLM-парсер (опционально)
-
-The project now supports an **LLM-based parser** that produces `ParsedCommand` JSON and then
-falls back to the rule parser on errors (recommended for safety).
-
-Режимы парсера: `rules` (baseline), `llm` (только LLM), `llm_safe` (LLM + fallback).
-
-
-
-- `--parser-mode ruless` — deterministic rule parser (baseline)
-- `--parser-mode llm_safe` — LLM parser + fallback to rules (recommended)
-- `--parser-mode llm` — LLM parser only (useful for measuring raw LLM accuracy)
-
-### Evaluate (parser + validator end-to-end)
-
-```bash
-python -m smarthome_core.cli eval-e2e --parser-mode rulesss
-python -m smarthome_core.cli eval-e2e --parser-mode llm_safe --llm-backend stub
+LLM настроена через параметры CLI или переменные окружения:
+```
+--llm-backend openai_compat
+--llm-base-url http://127.0.0.1:8080
+--llm-model qwen2.5-7b-instruct
+--llm-api-key <если требуется>
 ```
 
-### Plug a local LLM server (OpenAI-compatible)
-
-If you run a local server that exposes `/v1/chat/completions` (many do), you can use:
-
-```bash
-python -m smarthome_core.cli eval-e2e \
-  --parser-mode llm \
-  --llm-backend openai_compat \
-  --llm-base-url http://127.0.0.1:8000 \
-  --llm-model YOUR_MODEL_NAME
+## Запуск dry-run/exec против Home Assistant
+```powershell
+$env:HA_URL = "http://homeassistant.local:8123"
+$env:HA_TOKEN = "<Long Lived Token>"
+python -m smarthome_core.cli ha-dry-run --text "сделай свет потише в спальне"
+python -m smarthome_core.cli ha-exec --text "выключи свет на кухне"
 ```
+В dry-run ядро строит план без выполнения. `ha-exec` шлёт реальные вызовы через Supervisor proxy.
 
-The implementation is in `smarthome_core/parser_llm.py` + `smarthome_core/llm_client.py`.
+## LLM parser + fallback
+Файл `smarthome_core/parser_llm.py` реализует структуру результата, валидацию по JSON Schema и fallback к правилам (если LLM вернула мусор или потребовала уточнение). Логи и статистику можно смотреть в `reports/llm_*.jsonl` после запуска `cli eval-e2e`.
 
+## Дополнительные команды CLI
+- `validate-gold` — проверка, что gold-датаcет согласован со схемами.
+- `make-smoke-set` — формирует стабильный набор тестов для CI.
+- `eval-e2e --parser-mode llm_safe` — главный KPI: сколько команд прошли всю цепочку (parse → validate).
 
-
-### Короткие команды (и алиасы)
-
-- `eval` — полный прогон (NLU + validator + end-to-end)
-- `eval-nlu` — только парсер (ParsedCommand)
-- `eval-val` — только валидатор (ValidatedCommand)
-- `eval-e2e` — парсер→валидатор (главная продуктовая метрика)
-
-Старые команды (`eval-all`, `eval-parsed`, `eval-validated`, `eval-pipeline`) оставлены как алиасы.
-## Privacy
-
-Core module provides `redact_text()` to support safe logging. Default recommendation: do not store raw audio; avoid storing raw text; if logging is needed, redact by policy.
-
-
-## Evaluation
-
-Run evaluations on the gold dataset and generate reports:
-
-```bash
-python -m smarthome_core.cli eval --root .
-python -m smarthome_core.cli eval-nlu --root .
-python -m smarthome_core.cli eval-val --root .
-```
-
-Reports are written into `reports/` by default.
-
-Generate a stable smoke subset:
-
-```bash
-python -m smarthome_core.cli make-smoke-set --root .
-```
-
-This creates `tests/test_cases_smoke.jsonl`.
-
-
-### Using an alternative dataset
-
-```bash
-python -m smarthome_core.cli eval --root . --dataset data/light_gold_dual_v1_ext1.jsonl
-python -m smarthome_core.cli validate-gold --root . --dataset data/light_gold_dual_v1_ext1.jsonl
-```
-
-
-## Home Assistant execution (local)
-
-Set token in env and run:
-
-```bash
-# Linux/macOS
-export HA_TOKEN='...'
-python -m smarthome_core.cli ha-dry-run --text 'в спальне сделай свет потише'
-python -m smarthome_core.cli ha-exec --text 'в спальне сделай свет потише'
-
-# Windows PowerShell
-$env:HA_TOKEN = '...'
-python -m smarthome_core.cli ha-dry-run --text "в спальне сделай свет потише"
-python -m smarthome_core.cli ha-exec --text "в спальне сделай свет потише"
-```
-
-By default base URL is http://homeassistant.local:8123. Override with `--ha-url`.
+## Приватность и логи
+В модуле `privacy.py` есть `redact_text()` и политики логирования. Рекомендуем хранить только обезличенный текст и не собирать аудио, если это не требуется для отладки.

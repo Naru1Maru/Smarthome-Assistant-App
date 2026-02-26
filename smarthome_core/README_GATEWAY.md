@@ -1,79 +1,56 @@
-# SmartHome Gateway v1 (dev)
+# SmartHome Gateway (локальный шлюз)
 
-This is a small local HTTP gateway that connects:
+Лёгкое FastAPI-приложение, которое принимает текстовые команды от мобильного клиента, превращает их в структуру `ParsedCommand/ValidatedCommand` и вызывает Home Assistant. Собран как add-on, поэтому его удобно разворачивать рядом с HA.
 
-Mobile app (ASR text) -> smarthome_core (parse/validate) -> Home Assistant (execute)
+## Назначение
+```
+Телефон (HTTP POST /v1/command)
+      ↓
+SmartHome Gateway ──> smarthome_core (парсер, валидатор)
+      ↓
+Home Assistant (REST/Supervisor proxy)
+```
+Дополнительно шлюз умеет ходить в локальную LLM (OpenAI-совместимый endpoint) и логировать команды в JSONL.
 
-It is designed so that you can later plug an LLM parser **without changing the mobile app**.
-
-## Run on Windows (PowerShell)
-
-From your project root (the folder that contains `smarthome_core/`, `registry/`, `lexicon/`, `schemas/`):
-
-1) Create and activate venv (optional but recommended)
-
+## Запуск на Windows (PowerShell)
 ```powershell
+cd smarthome_core
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-```
-
-2) Install deps
-
-```powershell
 pip install -r requirements_gateway.txt
-```
 
-3) Set environment variables
-
-```powershell
 $env:HA_URL = "http://homeassistant.local:8123"
-$env:HA_TOKEN = "PASTE_YOUR_LONG_LIVED_TOKEN"
-$env:GATEWAY_API_KEY = "local-dev-key"   # optional but recommended
-$env:SH_CORE_ROOT = "."                  # project root with assets
-```
-
-4) Start gateway
-
-```powershell
+$env:HA_TOKEN = "<Long Lived Token>"
+$env:GATEWAY_API_KEY = "local-dev-key"
+$env:SH_CORE_ROOT = "."                 # путь до каталога с assets
 python -m uvicorn smarthome_gateway.main:app --host 0.0.0.0 --port 8099
 ```
 
-5) Test
-
+Проверка:
 ```powershell
 Invoke-RestMethod -Method Post `
   -Uri "http://127.0.0.1:8099/v1/command" `
   -Headers @{"X-API-Key"="local-dev-key"} `
   -ContentType "application/json" `
-  -Body '{"text":"в спальне сделай свет потише","parser_mode":"rules","dry_run":false}'
+  -Body '{"text":"выключи свет в спальне","parser_mode":"llm_safe","dry_run":false}'
 ```
+Health-check: `Invoke-RestMethod http://127.0.0.1:8099/health`
 
-Health:
+## Настройки LLM
+Переменные окружения:
+- `LLM_BASE_URL` — например `http://192.168.2.84:8080`
+- `LLM_MODEL` — имя модели из OpenAI‑совместимого сервера
+- `LLM_API_KEY` — если сервер требует ключ
 
-```powershell
-Invoke-RestMethod http://127.0.0.1:8099/health
-```
+Режимы парсера:
+- `rules` — только правила
+- `llm_safe` — правила + LLM при необходимости
+- `llm` — всегда через LLM (для экспериментов)
 
-## LLM readiness
+Если LLM не сконфигурирована, `llm_safe` автоматически скатывается к `rules`, а `llm` вернёт ошибку.
 
-Gateway supports `parser_mode`:
-- `rules` (default)
-- `llm_safe` (LLM + fallback to rules)
-- `llm` (LLM only)
+## Add-on для Home Assistant
+Структура add-on в `smarthome_core/smarthome_gateway_addon/`. Скопируйте каталог в `/addons/<название>` на устройстве с HA, обновите `config.yaml` и перезапустите add-on через Supervisor. Логи шлюза можно смотреть в UI Home Assistant.
 
-To enable LLM later (OpenAI-compatible endpoint):
-
-- `LLM_BASE_URL` (e.g. http://127.0.0.1:8000)
-- `LLM_MODEL`
-- `LLM_API_KEY` (optional)
-
-If LLM is not configured:
-- `llm_safe` will fall back to `rules`
-- `llm` will return an error
-
-## Logs
-
-Gateway appends compact JSONL logs to:
-- `${GATEWAY_LOG_DIR}/commands.jsonl` (default: `<project_root>/gateway_logs/commands.jsonl`)
-
-By default it stores **redacted** text unless device registry allows raw logging.
+## Логи
+По умолчанию пишем JSONL в `<корень>/gateway_logs/commands.jsonl`. Формат компактный: время, текст (с учётом политики редактирования), режим парсера, результат и latency.

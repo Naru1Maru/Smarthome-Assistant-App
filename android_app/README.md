@@ -1,36 +1,40 @@
-# SmarthomeAssistant (Android MVP)
+# Android-приложение SmartHome Assistant
 
-MVP: push-to-talk (Vosk on-device ASR) -> text -> Gateway (LAN) -> Home Assistant -> voice response (Android TTS).
+Мобильный клиент для локального голосового ассистента: Vosk на устройстве → текст → SmartHome Gateway по LAN → Home Assistant → ответ в динамик (Android TTS). Приложение не использует облака и работает в одной сети с домашним шлюзом.
 
-## Requirements
-- Android Studio
-- Android device (Samsung A72 OK) or emulator
-- Java 17 (bundled with Android Studio)
-- Gateway running in LAN
+## Требования
+- Android Studio (Arctic Fox и новее).
+- Устройство с Android 10+ (проверяли на Samsung A72) либо эмулятор.
+- Java 17 (идёт в комплекте с Android Studio).
+- SmartHome Gateway, развернутый в той же сети.
 
-## Important: Gradle wrapper jar
-This archive does **not** include `gradle/wrapper/gradle-wrapper.jar` (binary).
-Fastest way to fix:
-1) Create any new Android Studio project (Empty Activity) and let it sync.
-2) Copy `gradle/wrapper/gradle-wrapper.jar` from that new project into this project at:
-   `gradle/wrapper/gradle-wrapper.jar`
+## Подготовка Gradle wrapper
+В репозиторий не добавляем `gradle/wrapper/gradle-wrapper.jar`. Проще всего взять его из любого нового проекта Android Studio:
+1. Создайте пустой проект (Empty Activity) и дождитесь синхронизации Gradle.
+2. Скопируйте `gradle/wrapper/gradle-wrapper.jar` из нового проекта в `android_app/gradle/wrapper/`.
 
-## Vosk model
-Put Vosk model directory (unpacked) here:
-`app/src/main/assets/models/vosk-model-small-ru-0.22/`
+## Модель Vosk
+Скачайте и распакуйте модель `vosk-model-small-ru-0.22` в каталог:
+```
+app/src/main/assets/models/vosk-model-small-ru-0.22/
+```
+Внутри должны лежать подпапки `am/`, `conf/`, `graph/`, `ivector/`, `README` и файл `uuid`. Если `uuid` отсутствует, создайте текстовый файл с любым UUID, например `00000000-0000-0000-0000-000000000000`.
 
-Inside it must contain: `am/ conf/ graph/ ivector/ README` and **file `uuid`**.
-If your model doesn't have `uuid`, create:
-`app/src/main/assets/models/vosk-model-small-ru-0.22/uuid`
-with any text, e.g. `00000000-0000-0000-0000-000000000000`.
+## Сборка и запуск
+1. Откройте `android_app/` в Android Studio.
+2. Выполните Gradle Sync (при необходимости — пункт из раздела про wrapper).
+3. Соберите и установите приложение на устройство.
 
-## Run
-1) Open project in Android Studio
-2) Sync Gradle
-3) Run on device
+## Настройки приложения
+В разделе «Настройки» укажите:
+- `Gateway URL` — адрес SmartHome Gateway, например `http://192.168.1.10:8099`.
+- `X-API-Key` — ключ, настроенный на шлюзе.
+- Режим парсера: *Правила*, *LLM + правила* или *Только LLM*.
+- Параметры TTS (скорость, тон).
 
-## Gateway settings
-- Gateway URL example: `http://192.168.1.10:8099`
-- API key: your `X-API-Key`
+## Как приложение общается со шлюзом
+- POST `GatewayURL/v1/command`
+- Заголовок `X-API-Key: <ваш ключ>`
+- Тело: `{"text":"включи свет","parser_mode":"llm_safe","dry_run":false}` (структура такая же, как у шлюза).
 
-The app sends `POST {GatewayUrl}/v1/command` with header `X-API-Key`.
+Журнал в приложении показывает исходные запросы/ответы, поэтому легко диагностировать проблемы с сетью или распознаванием.
