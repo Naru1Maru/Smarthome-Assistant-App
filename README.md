@@ -45,12 +45,12 @@
 ## Как запустить
 
 1. **Телефон (Android Studio)**
-   - открыть `SmarthomeAssistant_android_mvp/`;
+   - открыть `android_app/`;
    - собрать и установить приложение на устройство (Android 10+);
    - в настройках указать `Gateway URL`, `X-API-Key`, режим парсера и параметры TTS.
 
 2. **SmartHome Gateway (Home Assistant)**
-   - код add-on лежит в `smarthome_core_v1_haexec_brightnessfix/smarthome_gateway_addon/`;
+   - код add-on лежит в `smarthome_core/smarthome_gateway_addon/`;
    - скопировать add-on в `/addons` на устройстве с Home Assistant и задать токен, URL Supervisor proxy, `LLM_BASE_URL`.
 
 3. **LLM Bridge + модель**
@@ -82,8 +82,8 @@ curl -H "X-API-Key: local-dev-key" -d '{"text":"включи свет","parser_m
 
 ```
 README.md
-SmarthomeAssistant_android_mvp/          ← Android-клиент (Compose, Vosk, TTS)
-smarthome_core_v1_haexec_brightnessfix/
+android_app/                             ← Android-клиент (Compose, Vosk, TTS)
+smarthome_core/
     smarthome_core/                      ← ядро: правила, схемы, лексикон
     smarthome_gateway/                   ← FastAPI add-on
     smarthome_gateway_addon/             ← структура add-on для Home Assistant

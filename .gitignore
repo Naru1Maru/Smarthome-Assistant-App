@@ -42,3 +42,15 @@ homeassistant_backup/
 *.db-wal
 *.db-shm
 
+# Notebooks and misc
+.ipynb_checkpoints/
+*.ipynb
+
+# Android specific
+android_app/.gradle/
+android_app/.idea/
+android_app/.cxx/
+android_app/app/build/
+android_app/build/
+android_app/**/build/
+
