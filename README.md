@@ -1,4 +1,4 @@
-﻿# SmartHome Assistant (Magister Thesis)
+﻿# SmartHome Assistant App
 
 Мобильное приложение и локальная инфраструктура для голосового управления умным домом без облака.
 
@@ -14,7 +14,7 @@
 ## Как всё устроено
 
 ```
-Телефон (ASR + приложение) → SmartHome Gateway → Home Assistant → Zigbee → лампа
+Телефон (ASR + приложение) → SmartHome Gateway → Home Assistant → Zigbee → лампа (иное умное устройство)
                                      ↓
                                  LLM Bridge → llama.cpp → Qwen2.5
 ```
@@ -89,12 +89,3 @@ smarthome_core_v1_haexec_brightnessfix/
     smarthome_gateway_addon/             ← структура add-on для Home Assistant
     llama_openai_bridge.py               ← мост OpenAI ↔ llama.cpp
 ```
-
-## Что заливать
-
-- исходники Android-приложения;
-- ядро (`smarthome_core/`), лексиконы и схемы;
-- код добавки (`smarthome_gateway`, `smarthome_gateway_addon`);
-- bridge (`llama_openai_bridge.py`) и вспомогательные файлы (`requirements` и т.п.).
-
-Не загружаем модели, приватные ключи и лог-файлы.
